@@ -1,22 +1,61 @@
+const fs = require("fs");
+const path = require("path");
 const { discoverBookUrls } = require("./catalogue");
 const { fetchAndExtract } = require("./extractor");
+const { normalize } = require("./normalize");
+const { BookSchema } = require("./schema");
+
+const OUTPUT_DIR = path.join(__dirname, "..", "output");
 
 async function main() {
   const stats = { pagesFetched: 0, cacheHits: 0, failedPages: [] };
   const bookUrls = await discoverBookUrls(stats);
 
-  const rawRecords = [];
+  const validRecords = [];
+  const invalidRecords = [];
+  const seenUrls = new Set();
+
   for (const url of bookUrls) {
-    const record = await fetchAndExtract(
+    const raw = await fetchAndExtract(
       url,
       "https://books.toscrape.com/catalogue/page-1.html",
       stats,
     );
-    rawRecords.push(record);
+
+    if (raw.error) {
+      invalidRecords.push({ url, reason: raw.error });
+      continue;
+    }
+
+    const clean = normalize(raw);
+    const result = BookSchema.safeParse(clean);
+
+    if (!result.success) {
+      invalidRecords.push({
+        url,
+        reason: result.error.issues.map((i) => i.message).join("; "),
+      });
+      continue;
+    }
+
+    if (seenUrls.has(clean.product_url)) continue; // idempotent
+    seenUrls.add(clean.product_url);
+    validRecords.push(result.data);
   }
 
-  console.log(`detail_pages=${rawRecords.length}`);
-  console.log(rawRecords[0]); // one complete raw record
+  if (!fs.existsSync(OUTPUT_DIR)) fs.mkdirSync(OUTPUT_DIR, { recursive: true });
+  fs.writeFileSync(
+    path.join(OUTPUT_DIR, "books.json"),
+    JSON.stringify(validRecords, null, 2),
+  );
+  fs.writeFileSync(
+    path.join(OUTPUT_DIR, "errors.json"),
+    JSON.stringify(invalidRecords, null, 2),
+  );
+
+  console.log(
+    `detail_pages=${bookUrls.length} valid=${validRecords.length} invalid=${invalidRecords.length}`,
+  );
 }
 
 main();
