@@ -1,9 +1,9 @@
-const { politeFetch } = require("./fetcher");
+const { discoverBookUrls } = require("./catalogue");
 
 async function main() {
   const stats = { pagesFetched: 0, cacheHits: 0, failedPages: [] };
-  const url = "https://books.toscrape.com/catalogue/page-1.html";
-  await politeFetch(url, stats);
+  const bookUrls = await discoverBookUrls(stats);
+  console.log(bookUrls.slice(0, 3)); // sanity peek
 }
 
 main();
