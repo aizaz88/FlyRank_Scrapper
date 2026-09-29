@@ -3,7 +3,7 @@ const path = require("path");
 
 const CACHE_DIR = path.join(__dirname, "..", "cache");
 const USER_AGENT =
-  "FlyRankInternshipA9/1.0 (+https://github.com/aizaz88/Assignments_flyRank)";
+  "FlyRankInternshipA9/1.0 (+https://github.com/aizaz88/FlyRank_Scrapper)";
 const TIMEOUT_MS = 8000;
 const DELAY_MS = 500;
 
